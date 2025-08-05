@@ -50,17 +50,24 @@ client = Groq(api_key=GROQ_API_KEY)
 os.environ["PATH"] += os.pathsep + r"C:\ffmpeg-7.1.1-essentials_build\bin"
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-BASE_DIR = Path.cwd()
+# Always use the directory of this file for consistent paths
+BASE_DIR = Path(__file__).resolve().parent.parent  # Go up from backend/main.py to project root
 CACHE_DIR = BASE_DIR / "video_cache"
 CACHE_DIR.mkdir(exist_ok=True)
-FONT_DIR = BASE_DIR / "backend" / "fonts" / "dejavu-fonts-ttf-2.37" / "ttf"
+
+# Font directory (relative to this backend folder)
+FONT_DIR = Path(__file__).resolve().parent / "fonts" / "dejavu-fonts-ttf-2.37" / "ttf"
 font_files = glob.glob(str(FONT_DIR / "DejaVuSans*.ttf"))
 
+print(f"🔎 FONT_DIR: {FONT_DIR}")
+print(f"🔎 Found font files: {font_files}")
+
 if font_files:
-    FONT_PATH = font_files[0]  # ✅ Use the first font found
+    FONT_PATH = font_files[0]
+    print(f"✅ Using font: {FONT_PATH}")
 else:
     print("⚠️ No DejaVu fonts found. Using default system font.")
-    FONT_PATH = None  # ✅ Set to None or a fallback font path
+    FONT_PATH = None
 
 CACHE_INFO_FILE = CACHE_DIR / "cache_info.txt"
 
