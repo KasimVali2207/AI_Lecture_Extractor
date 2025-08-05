@@ -28,8 +28,24 @@ from scenedetect.detectors import ContentDetector
 # ===========================
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-GROQ_API_KEY = "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"
+# ✅ Explicitly load the .env file from the backend directory dynamically
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(BASE_DIR, ".env")
+load_dotenv(dotenv_path=env_path)
+
+# ✅ Fetch API key securely
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+if not GROQ_API_KEY:
+    raise ValueError("❌ GROQ_API_KEY is missing. Please ensure it is set in the backend/.env file.")
+
+# ✅ Log masked API key for debugging
+masked_key = GROQ_API_KEY[:6] + "*****" + GROQ_API_KEY[-4:]
+logging.info(f"✅ Loaded GROQ_API_KEY: {masked_key}")
+
+# ✅ Initialize Groq client
 client = Groq(api_key=GROQ_API_KEY)
+
 
 os.environ["PATH"] += os.pathsep + r"C:\ffmpeg-7.1.1-essentials_build\bin"
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"

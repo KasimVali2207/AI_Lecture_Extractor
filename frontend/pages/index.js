@@ -525,27 +525,36 @@ export default function Home() {
         </section>
       )}
 
-      {/* Analytics */}
-      {(keywords.length > 0 || quizScores.length > 0) && (
-        <section id="analytics-section" className={styles.analyticsSection}>
-          <h2 className={styles.sectionTitle}>📊 Analytics & Insights</h2>
-          <p className={styles.sectionSubtitle}>Visual insights from your lecture summary and quiz performance.</p>
-          <div className={styles.analyticsGrid}>
-            {keywords.length > 0 && (
-              <div className={styles.analyticsCard}>
-                <h3>🔑 Top Keywords</h3>
-                <canvas id="keywordChart"></canvas>
-              </div>
-            )}
-            {quizScores.length > 0 && (
-              <div className={styles.analyticsCard}>
-                <h3>🎯 Quiz Performance</h3>
-                <canvas id="quizChart"></canvas>
-              </div>
-            )}
-          </div>
-        </section>
+      {/* Learning Insights */}
+{(keywords.length > 0 || quizScores.length > 0) && (
+  <section id="analytics-section" className={styles.analyticsSection}>
+    <h2 className={styles.sectionTitle}>📊 Learning Insights & Progress Tracking</h2>
+    <p className={styles.sectionSubtitle}>
+      Monitor your learning journey with keyword frequency analysis and quiz performance trends to identify strengths and focus areas.
+    </p>
+    <div className={styles.analyticsGrid}>
+      {keywords.length > 0 && (
+        <div className={styles.analyticsCard}>
+          <h3>🔑 Key Concepts Covered</h3>
+          <p className={styles.analyticsDescription}>
+            Frequently mentioned topics extracted from your lecture summary.
+          </p>
+          <canvas id="keywordChart"></canvas>
+        </div>
       )}
+      {quizScores.length > 0 && (
+        <div className={styles.analyticsCard}>
+          <h3>🎯 Quiz Performance Trend</h3>
+          <p className={styles.analyticsDescription}>
+            Track your quiz scores to evaluate knowledge retention and improvement over time.
+          </p>
+          <canvas id="quizChart"></canvas>
+        </div>
+      )}
+    </div>
+  </section>
+)}
+
 
       {/* Footer */}
       <footer className={styles.footer}>
