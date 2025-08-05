@@ -53,10 +53,17 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tessera
 BASE_DIR = Path.cwd()
 CACHE_DIR = BASE_DIR / "video_cache"
 CACHE_DIR.mkdir(exist_ok=True)
-
 FONT_DIR = BASE_DIR / "backend" / "fonts" / "dejavu-fonts-ttf-2.37" / "ttf"
-FONT_PATH = glob.glob(str(FONT_DIR / "DejaVuSans*.ttf"))[0]
+font_files = glob.glob(str(FONT_DIR / "DejaVuSans*.ttf"))
+
+if font_files:
+    FONT_PATH = font_files[0]  # ✅ Use the first font found
+else:
+    print("⚠️ No DejaVu fonts found. Using default system font.")
+    FONT_PATH = None  # ✅ Set to None or a fallback font path
+
 CACHE_INFO_FILE = CACHE_DIR / "cache_info.txt"
+
 
 # ===========================
 # ⚙ FASTAPI CONFIG
