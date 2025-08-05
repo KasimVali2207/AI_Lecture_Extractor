@@ -216,56 +216,77 @@ def save_cached_hash(video_hash: str):
 # ===========================
 @app.post("/process-video", tags=["Video Processing"])
 async def process_video(video: VideoRequest):
-    if not video.url.startswith(("http://", "https://")):
-        return {"error": "Invalid video URL"}
+    try:
+        if not video.url.startswith(("http://", "https://")):
+            raise HTTPException(status_code=400, detail="❌ Invalid video URL")
 
-    logging.info(f"📥 Received video URL: {video.url}")
-    temp_dir = Path(tempfile.mkdtemp())
-    video_path = temp_dir / "lecture.mp4"
+        logging.info(f"📥 Received video URL: {video.url}")
+        temp_dir = Path(tempfile.mkdtemp())
+        video_path = temp_dir / "lecture.mp4"
 
-    if not download_video(video.url, str(video_path)):
-        return {"message": "❌ Video download failed. Try another URL."}
+        # Download video
+        if not download_video(video.url, str(video_path)):
+            raise HTTPException(status_code=500, detail="❌ Video download failed. Try another URL.")
 
-    video_hash = get_video_hash(video_path)
-    cached_hash = get_cached_hash()
+        # Cache handling
+        video_hash = get_video_hash(video_path)
+        cached_hash = get_cached_hash()
 
-    if cached_hash and cached_hash != video_hash:
-        logging.info("🗑 Clearing old cache for new video...")
-        clear_cache()
+        if cached_hash and cached_hash != video_hash:
+            logging.info("🗑 Clearing old cache for new video...")
+            clear_cache()
 
-    cached_dir = CACHE_DIR / video_hash
-    cached_dir.mkdir(parents=True, exist_ok=True)
-    pdf_path = cached_dir / "LectureNotes.pdf"
+        cached_dir = CACHE_DIR / video_hash
+        cached_dir.mkdir(parents=True, exist_ok=True)
+        pdf_path = cached_dir / "LectureNotes.pdf"
 
-    if cached_hash == video_hash and pdf_path.exists():
-        return {"summary": "♻ Using cached results", "pdf_path": "/download-pdf"}
+        if cached_hash == video_hash and pdf_path.exists():
+            logging.info("♻ Using cached results")
+            return {"summary": "♻ Using cached results", "pdf_path": "/download-pdf"}
 
-    save_cached_hash(video_hash)
+        save_cached_hash(video_hash)
 
-    audio_path = cached_dir / "audio.mp3"
-    extract_audio(video_path, audio_path)
-    with open(audio_path, "rb") as f:
-        transcript_response = client.audio.transcriptions.create(
-            model="whisper-large-v3",
-            file=f
+        # Extract audio
+        audio_path = cached_dir / "audio.mp3"
+        extract_audio(video_path, audio_path)
+
+        # Transcription
+        with open(audio_path, "rb") as f:
+            transcript_response = client.audio.transcriptions.create(
+                model="whisper-large-v3",
+                file=f
+            )
+        full_transcript = transcript_response.text.strip()
+
+        if not full_transcript:
+            raise HTTPException(status_code=500, detail="❌ Failed to transcribe audio.")
+
+        # Save transcript
+        transcript_path = cached_dir / "transcript.txt"
+        transcript_path.write_text(full_transcript, encoding="utf-8")
+
+        # Language detection
+        detected_language = detect(full_transcript) if full_transcript else "en"
+        summary_prompt = f"Summarize this lecture in {detected_language if detected_language != 'en' else 'English'}:\n\n{full_transcript[:8000]}"
+
+        # Summarization
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": summary_prompt}]
         )
-    full_transcript = transcript_response.text.strip()
+        summary = clean_summary(response.choices[0].message.content.strip())
 
-    transcript_path = cached_dir / "transcript.txt"
-    transcript_path.write_text(full_transcript, encoding="utf-8")
+        # Extract slides & generate PDF
+        slides = extract_slides(video_path, cached_dir)
+        generate_pdf_with_slides(summary, slides, pdf_path)
 
-    detected_language = detect(full_transcript) if full_transcript else "en"
-    summary_prompt = f"Summarize this lecture in {detected_language if detected_language != 'en' else 'English'}:\n\n{full_transcript[:8000]}"
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": summary_prompt}]
-    )
-    summary = clean_summary(response.choices[0].message.content.strip())
+        logging.info("✅ Video processed successfully!")
+        return {"summary": summary, "pdf_path": "/download-pdf", "detected_language": detected_language}
 
-    slides = extract_slides(video_path, cached_dir)
-    generate_pdf_with_slides(summary, slides, pdf_path)
+    except Exception as e:
+        logging.error(f"❌ ERROR in /process-video: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"❌ Video processing failed: {str(e)}")
 
-    return {"summary": summary, "pdf_path": "/download-pdf", "detected_language": detected_language}
 
 # ===========================
 # 2️⃣ TRANSLATE & REGENERATE SUMMARY
